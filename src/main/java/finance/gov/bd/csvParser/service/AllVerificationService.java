@@ -116,7 +116,7 @@ public class AllVerificationService {
                     try {
                         BRNResponse response = getBRNdata(dto.getBirthRegNo().toString(), dto.getDateOfBirth().toString());
                         if (response != null) {
-                            if (response.personname != null || response.personname.isEmpty() || response.personnameEn != null || response.personnameEn.isEmpty()) {
+                            if (response.personname != null || response.personnameEn != null) {
                                 dto.setBrnVerifyStatus(1);
                                 dto.setNameEn(response.personnameEn);
                                 dto.setNameBn(response.personname);

@@ -22,7 +22,6 @@ import java.util.List;
 @Service
 public class ExcelService {
     public static String TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
-    static String[] HEADERs = {"nid", "dateOfBirth", "nameEn", "nameBn"};
     static String SHEET = "Sheet1";
     @Autowired
     UploadService uploadService;

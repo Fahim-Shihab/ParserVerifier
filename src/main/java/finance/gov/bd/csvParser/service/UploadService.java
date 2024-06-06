@@ -111,6 +111,7 @@ public class UploadService {
             }
             log.setExcelNameBn(dto.getNameBn());
             log.setExcelNameEn(dto.getNameEn());
+            log.setNidVerifyStatus(0);
 
             logs.add(log);
             count++;
@@ -154,6 +155,7 @@ public class UploadService {
             }
             log.setExcelNameBn(dto.getNameBn());
             log.setExcelNameEn(dto.getNameEn());
+            log.setBrnVerifyStatus(0);
 
             logs.add(log);
             count++;
