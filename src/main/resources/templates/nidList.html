@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="url" th:content="@{/}">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <title>NID List</title>
+
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.bundle.min.js"></script>
+</head>
+<body>
+
+<!-- Loading Modal -->
+<div class="modal" id="loadingModal" data-backdrop="static" data-keyboard="false" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-body">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="sr-only">Loading...</span>
+                </div>
+                <p class="mt-2">Loading...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="customModal" tabindex="-1" role="dialog" aria-labelledby="customModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="customModalLabel">Message</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <!-- Message content -->
+                <p id="customMessage"></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container py-5">
+    <div class="row">
+        <div class="col-10 mx-auto">
+            <h1>Imported NID Data</h1>
+            <div class="alert alert-danger" role="alert" th:if="${!status}">
+                <strong>Error:</strong>
+                <span th:text="${message}"></span>
+            </div>
+
+            <div style="margin-top:20px;margin-bottom:20px">
+                <button type="submit" class="btn btn-primary btn-sm" id="verify"
+                        th:text="Verify"></button>
+            </div>
+
+            <!--display users list-->
+            <table class="table table-striped" th:if="${status}">
+                <thead>
+                <tr>
+                    <th scope="col">#</th>
+                    <th scope="col">NID</th>
+                    <th scope="col">Name</th>
+                    <th scope="col">Verification Status</th>
+                </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="dto, i : ${nidImportedList}">
+                        <th scope="row" th:text="${i.index + 1}"></th>
+                        <td th:text="${dto.nid}"></td>
+                        <td th:text="${dto.name}"></td>
+                        <td th:text="${dto.verificationStatus}"></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+
+    $("#verify").click(function () {
+        event.preventDefault();
+        console.log("Verify button clicked");
+
+        var request = {
+            "checkBy": "N",
+            "verifyStatus": 0
+        }
+
+        var data = JSON.stringify(request);
+        console.log("Data:"+data);
+        var baseUrl = $('meta[name=url]').attr("content");
+        var uri = baseUrl + "all-verify";
+        console.log("uri: "+uri);
+
+        $('#loadingModal').modal('show');
+
+        $.ajax({
+            type: "POST",
+            contentType: "application/json",
+            url: uri,
+            data: data,
+            dataType: 'json',
+            cache: false,
+            timeout: 6000000,
+            success: function (result) {
+                console.log('result is : ', result);
+                $('#loadingModal').modal('hide');
+                if (result.opResult) {
+                    $('#customMessage').text(result.opMsg);
+                    $('#customModal').modal('show');
+                } else {
+                    $('#customMessage').text(result.opMsg);
+                    $('#customModal').modal('show');
+                }
+            },
+            error: function (error) {
+                $('#loadingModal').modal('hide');
+                console.log("ERROR : ", error);
+                $('#customMessage').text("Failed. Plz try again later"); // Set the custom message in the modal
+                $('#customModal').modal('show'); // Show the modal
+            }
+        });
+
+    });
+</script>
+
+</body>
+</html>
