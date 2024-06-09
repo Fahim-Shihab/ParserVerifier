@@ -20,6 +20,12 @@
                 <span th:text="${message}"></span>
             </div>
 
+            <div style="margin-top:20px">
+                <a type="button" class="btn btn-info btn-sm" href="/csvParser/log/viewNidList">View Imported NID list</a>
+                <a type="button" class="btn btn-info btn-sm" href="/csvParser/log/viewBrnList">View Imported BRN list</a>
+                <a type="button" class="btn btn-info btn-sm" href="/csvParser/log/viewMfsInfoList">View Imported MFS Info list</a>
+            </div>
+
             <!--display users list-->
             <table class="table table-striped" th:if="${status}">
                 <thead>

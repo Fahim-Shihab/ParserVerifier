@@ -1,5 +1,6 @@
 <!DOCTYPE html>
-<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<html lang="en" xmlns:th="http://www.thymeleaf.org" xmlns:color="http://www.w3.org/1999/xhtml"
+      xmlns:font-weight="http://www.w3.org/1999/xhtml">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
@@ -16,9 +17,11 @@
             <h1>Upload CSV File Example</h1>
             <form method="POST" th:action="@{/upload-csv-file}" enctype="multipart/form-data">
                 <div>
-                    <label>Import Type:</label><br/>
+                    <label for="importTypeLbl" class="col-md-3 control-label"><span class="mandatory" style="color: red; font-weight: bold">*</span></label>
+                    <label id="importTypeLbl">Import Type:</label><br/>
                     <input type="radio" name="importType" value="N" />NID<br/>
                     <input type="radio" name="importType" value="B" />Birth Reg No<br/>
+                    <input type="radio" name="importType" value="M" />MFS Account<br/>
                 </div>
                 <div class="form-group mt-3">
                     <label for="file">Select a CSV/XLS/XLSX file</label>
@@ -29,6 +32,7 @@
             <div style="margin-top:20px">
                 <a type="button" class="btn btn-info btn-sm" href="/csvParser/log/viewNidList">View Imported NID list</a>
                 <a type="button" class="btn btn-info btn-sm" href="/csvParser/log/viewBrnList">View Imported BRN list</a>
+                <a type="button" class="btn btn-info btn-sm" href="/csvParser/log/viewMfsInfoList">View Imported MFS Info list</a>
             </div>
         </div>
     </div>

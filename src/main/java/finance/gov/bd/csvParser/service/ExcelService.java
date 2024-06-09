@@ -1,6 +1,7 @@
 package finance.gov.bd.csvParser.service;
 
 import finance.gov.bd.csvParser.dto.BrnVerificationCsv;
+import finance.gov.bd.csvParser.dto.MfsVerificationCsv;
 import finance.gov.bd.csvParser.dto.NidVerificationCsv;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
@@ -171,11 +172,75 @@ public class ExcelService {
         }
     }
 
+    private void processMfsInfoList(InputStream is, String importType, Model model) {
+        try {
+            Date started = new Date();
+            Workbook workbook = new XSSFWorkbook(is);
+            Sheet sheet = workbook.getSheet(SHEET);
+            Iterator<Row> rows = sheet.iterator();
+
+            List<MfsVerificationCsv> mfsInfoList = new ArrayList<>();
+            int rowNumber = 0;
+            while (rows.hasNext()) {
+                Row currentRow = rows.next();
+                // skip header
+                if (rowNumber == 0) {
+                    rowNumber++;
+                    continue;
+                }
+                Iterator<Cell> cellsInRow = currentRow.iterator();
+                MfsVerificationCsv mfsVerifyObj = new MfsVerificationCsv();
+                int cellIdx = 0;
+                while (cellsInRow.hasNext()) {
+                    Cell currentCell = cellsInRow.next();
+                    switch (cellIdx) {
+                        case 0:
+                            double numericValue = Double.parseDouble(currentCell.toString());
+                            if (String.valueOf(numericValue).contains("E")) {
+                                DecimalFormat df = new DecimalFormat("0");
+                                String plainNumber = df.format(numericValue);
+                                mfsVerifyObj.setNid(new BigInteger(plainNumber));
+                            }
+                            break;
+                        case 1:
+                            mfsVerifyObj.setMfsName(currentCell.toString());
+                            break;
+                        case 2:
+                            mfsVerifyObj.setMobileNumber(currentCell.toString());
+                            break;
+                        default:
+                            break;
+                    }
+                    cellIdx++;
+                }
+                mfsInfoList.add(mfsVerifyObj);
+            }
+
+            workbook.close();
+
+            if (mfsInfoList != null && mfsInfoList.size() > 0) {
+                int count = uploadService.saveMfsListToDb(mfsInfoList);
+
+                Date ended = new Date();
+
+                model.addAttribute("totalCount", mfsInfoList.size());
+                model.addAttribute("importCount", count);
+                model.addAttribute("importStarted", started);
+                model.addAttribute("importEnded", ended);
+                model.addAttribute("status", true);
+            }
+        } catch (IOException e) {
+            throw new RuntimeException("fail to parse Excel file: " + e.getMessage());
+        }
+    }
+
     public void processExcelFile(InputStream is, String importType, Model model) {
         if (importType.equals("N")) {
             processNidList(is, importType, model);
         } else if (importType.equals("B")) {
             processBrnList(is, importType, model);
+        } else if (importType.equals("M")) {
+            processMfsInfoList(is, importType, model);
         }
     }
 }

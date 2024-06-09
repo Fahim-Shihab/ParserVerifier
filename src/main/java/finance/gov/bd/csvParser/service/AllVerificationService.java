@@ -5,8 +5,10 @@ import com.google.gson.GsonBuilder;
 import finance.gov.bd.csvParser.dto.request.VerificationRequest;
 import finance.gov.bd.csvParser.dto.response.*;
 import finance.gov.bd.csvParser.model.BrnVerificationLog;
+import finance.gov.bd.csvParser.model.MfsVerificationLog;
 import finance.gov.bd.csvParser.model.NidVerificationLog;
 import finance.gov.bd.csvParser.repository.BrnVerificationLogRepo;
+import finance.gov.bd.csvParser.repository.MfsVerificationLogRepo;
 import finance.gov.bd.csvParser.repository.NidVerificationLogRepo;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.i18n.LocaleContextHolder;
@@ -40,6 +42,9 @@ public class AllVerificationService {
     @Autowired
     BrnVerificationLogRepo brnVerificationLogRepo;
 
+    @Autowired
+    MfsVerificationLogRepo mfsVerificationLogRepo;
+
     public ServiceResponse verify(VerificationRequest req) {
         try {
             if (req.getCheckBy() != null) {
@@ -47,6 +52,8 @@ public class AllVerificationService {
                     verifyNid(req);
                 } else if (req.getCheckBy().equals("B")) {
                     verifyBrn(req);
+                } else if (req.getCheckBy().equals("M")) {
+                    verifyMfs(req);
                 }
             }
             return new ServiceResponse();
@@ -143,6 +150,86 @@ public class AllVerificationService {
         if (verifyList.size() > 0) {
             brnVerificationLogRepo.saveAll(verifyList);
         }
+    }
+
+    private void verifyMfs(VerificationRequest req) {
+        Integer size = req.getSize() != null ? req.getSize() : 1000;
+        List<MfsVerificationLog> list = mfsVerificationLogRepo.findByMfsVerifyStatus(req.getVerifyStatus(), size);
+
+        List<MfsVerificationLog> verifyList = new ArrayList<>();
+
+        if (list != null && list.size() > 0) {
+            for (MfsVerificationLog dto : list) {
+                if (dto.getNid() != null && dto.getMfsName() != null && dto.getMobileNumber() != null) {
+                    try {
+                        MFSResponse response = getMFSData(dto.getMfsName().toLowerCase(), dto.getNid().toString(), dto.getMobileNumber());
+                        if (response != null) {
+                            if (response.getAccountExist() == false || response.getNIDMatched() == false || response.getNIDMobileMatched() == false) {
+                                if (dto.getAlternateNid() != null) {
+                                    MFSResponse response2 = getMFSData(dto.getMfsName().toLowerCase(), dto.getAlternateNid().toString(), dto.getMobileNumber());
+                                    if (response2 != null) {
+                                        if (response2.getAccountExist() == true && response.getAccountExist() == false) {
+                                            response.setAccountExist(true);
+                                        }
+                                        if (response2.getNIDMatched()== true && response.getNIDMatched() == false) {
+                                            response.setNIDMatched(true);
+                                        }
+                                        if (response2.getNIDMobileMatched()== true && response.getNIDMobileMatched() == false) {
+                                            response.setNIDMobileMatched(true);
+                                        }
+                                    }
+                                }
+                            }
+                            dto = updateMfsAccountInfo(dto, response);
+                        } else {
+                            dto.setAccountExist(3);
+                            dto.setNidMatched(3);
+                            dto.setNidMobileMatched(3);
+                            dto.setMfsVerifyStatus(3);
+                        }
+
+                        dto.setLastVerifyAt(new java.util.Date());
+                        verifyList.add(dto);
+
+                    } catch (Exception ex) {
+                        dto.setMfsVerifyStatus(3);
+                        dto.setLastVerifyAt(new java.util.Date());
+                        verifyList.add(dto);
+                        ex.printStackTrace();
+                    }
+                }
+            }
+        }
+
+        if (verifyList.size() > 0) {
+            mfsVerificationLogRepo.saveAll(verifyList);
+        }
+    }
+
+    private MfsVerificationLog updateMfsAccountInfo(MfsVerificationLog dto, MFSResponse response) {
+        if (response.getAccountExist() != null) {
+            if (response.getAccountExist())   dto.setAccountExist(1);
+            else    dto.setAccountExist(2);
+        }
+        else {
+            dto.setAccountExist(3);
+        }
+        if (response.getNIDMatched() != null) {
+            if (response.getNIDMatched())   dto.setNidMatched(1);
+            else    dto.setNidMatched(2);
+        }
+        else {
+            dto.setNidMatched(3);
+        }
+        if (response.getNIDMobileMatched() != null) {
+            if (response.getNIDMobileMatched())   dto.setNidMobileMatched(1);
+            else    dto.setNidMobileMatched(2);
+        }
+        else {
+            dto.setNidMobileMatched(3);
+        }
+        dto.setMfsVerifyStatus(1);
+        return dto;
     }
 
     private synchronized String getToken() {
@@ -360,6 +447,114 @@ public class AllVerificationService {
             System.out.println(e.getMessage());
         }
         return null;
+    }
+
+    private MFSResponse getMFSResponseAfterFirstTokenExpiry(URL url) {
+        try {
+            getToken();
+            if (token != null && !token.isEmpty()) {
+                HttpURLConnection con2 = (HttpURLConnection) url.openConnection();
+                con2.setRequestMethod("GET");
+                con2.setRequestProperty("Accept-Charset", "UTF-8");
+                con2.setRequestProperty("Authorization", "Bearer " + token);
+                con2.setConnectTimeout(30000);
+                con2.setReadTimeout(30000);
+
+                int responseCode2 = con2.getResponseCode();
+                System.out.println("Response Code: " + responseCode2);
+                if (responseCode2 == HttpURLConnection.HTTP_OK) {
+                    BufferedReader in2 = new BufferedReader(new InputStreamReader(
+                            con2.getInputStream(), "utf-8"));
+                    String inputLine2;
+                    StringBuffer response2 = new StringBuffer();
+
+                    while ((inputLine2 = in2.readLine()) != null) {
+                        response2.append(inputLine2);
+                    }
+                    JSONObject jsonResponse2 = new JSONObject(response2.toString());
+
+                    System.out.println(jsonResponse2);
+                    MFSResponse mFSResponse = gson.fromJson(response2.toString(), MFSResponse.class);
+                    System.out.println("msg: " + mFSResponse.getMessage());
+                    System.out.println("account: " + mFSResponse.getAccountExist());
+                    System.out.println("nid: " + mFSResponse.getNIDMatched());
+                    System.out.println("nid-mobile: " + mFSResponse.getNIDMobileMatched());
+                    mFSResponse.setErrorCode(200);
+                    return mFSResponse;
+                } else {
+                    return null;
+                }
+            } else {
+                return null;
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    public MFSResponse getMFSData(String mfs, String nid, String mobile) {
+        String language = LocaleContextHolder.getLocale().getLanguage();
+
+        if (token == null || token.isEmpty()) {
+            getToken();
+        }
+        if (token != null && !token.isEmpty()) {
+            try {
+
+                URL url = new URL(urlStr + "ibas2api/api/saftynet/MFSInfo?mfs=" + mfs + "&nid=" + nid + "&mobile=" + mobile);
+                System.out.println("URL : " + urlStr + "ibas2api/api/saftynet/MFSInfo?mfs=" + mfs + "&nid=" + nid + "&mobile=" + mobile);
+                HttpURLConnection con = (HttpURLConnection) url.openConnection();
+                con.setRequestMethod("GET");
+                con.setRequestProperty("Accept-Charset", "UTF-8");
+                con.setRequestProperty("Authorization", "Bearer " + token);
+                con.setConnectTimeout(30000);
+                con.setReadTimeout(30000);
+
+                int responseCode = con.getResponseCode();
+                System.out.println("Response Code: " + responseCode);
+                if (responseCode == HttpURLConnection.HTTP_OK) {
+                    BufferedReader in = new BufferedReader(new InputStreamReader(
+                            con.getInputStream(), "utf-8"));
+                    String inputLine;
+                    StringBuffer response = new StringBuffer();
+
+                    while ((inputLine = in.readLine()) != null) {
+                        response.append(inputLine);
+                    }
+                    JSONObject jsonResponse = new JSONObject(response.toString());
+
+                    System.out.println(jsonResponse);
+
+                    if (response.toString().equals("{\"responseCode\":\"1\"}")) {
+                        System.out.println("Expired Token");
+                        token = "";
+                        return getMFSResponseAfterFirstTokenExpiry(url);
+                    } else {
+                        MFSResponse mFSResponse = gson.fromJson(response.toString(), MFSResponse.class);
+                        System.out.println("msg: " + mFSResponse.getMessage());
+                        System.out.println("account: " + mFSResponse.getAccountExist());
+                        System.out.println("nid: " + mFSResponse.getNIDMatched());
+                        System.out.println("nid-mobile: " + mFSResponse.getNIDMobileMatched());
+                        mFSResponse.setErrorCode(200);
+                        return mFSResponse;
+                    }
+                } else if (responseCode == HttpURLConnection.HTTP_UNAUTHORIZED) {
+                    System.out.println("Expired Token. Now HTTP response code is correct in MFS verification");
+                    token = "";
+                    return getMFSResponseAfterFirstTokenExpiry(url);
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+                System.out.println(e.getMessage());
+
+            }
+        }
+        MFSResponse mFSResponse = new MFSResponse();
+        mFSResponse.setAccountExist(false);
+        mFSResponse.setMessage(("en".equals(language) ? "Server Issue" : "সার্ভার এর সাথে যোগাযোগ করা সম্ভব হয়নি। কিছুক্ষন পর আবার চেষ্টা করুন"));
+        mFSResponse.setErrorCode(500);
+        return mFSResponse;
     }
 
 }

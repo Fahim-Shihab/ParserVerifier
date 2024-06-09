@@ -19,4 +19,11 @@ public class LogController {
         model.addAttribute("status", true);
         return "brnList";
     }
+
+    @GetMapping(path = "/log/viewMfsInfoList")
+    public String viewMfsInfoList(Model model) {
+        model.addAttribute("message", null);
+        model.addAttribute("status", true);
+        return "mfsInfoList";
+    }
 }
