@@ -46,9 +46,9 @@ public class UploadController {
                 uploadService.processCsvFile(file, importType, model);
             } else if (ext != null && (ext.equals("xls") || ext.equals("xlsx"))) {
                 try {
-                    excelService.processExcelFile(file.getInputStream(), importType, model);
+                    excelService.processExcelFile(file, importType, model);
                     model.addAttribute("status", true);
-                } catch (IOException ex) {
+                } catch (Exception ex) {
                     ex.printStackTrace();
                 }
             }

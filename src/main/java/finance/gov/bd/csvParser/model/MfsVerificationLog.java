@@ -34,4 +34,6 @@ public class MfsVerificationLog {
     @Column(name = "last_verify_at")
     @Temporal(TemporalType.TIMESTAMP)
     private Date lastVerifyAt;
+    @Column(name="file_id")
+    private Integer fileId;
 }

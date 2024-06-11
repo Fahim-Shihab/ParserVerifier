@@ -3,6 +3,7 @@ package finance.gov.bd.csvParser.service;
 import finance.gov.bd.csvParser.dto.BrnVerificationCsv;
 import finance.gov.bd.csvParser.dto.MfsVerificationCsv;
 import finance.gov.bd.csvParser.dto.NidVerificationCsv;
+import finance.gov.bd.csvParser.repository.FileInfoRepository;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -34,9 +35,10 @@ public class ExcelService {
         return true;
     }
 
-    private void processNidList(InputStream is, String importType, Model model) {
+    private void processNidList(MultipartFile file, String importType, Model model) {
         try {
             Date started = new Date();
+            InputStream is = file.getInputStream();
             Workbook workbook = new XSSFWorkbook(is);
             Sheet sheet = workbook.getSheet(SHEET);
             Iterator<Row> rows = sheet.iterator();
@@ -87,25 +89,35 @@ public class ExcelService {
 
             workbook.close();
 
-            if (nidList != null && nidList.size() > 0) {
-                int count = uploadService.saveNidListToDb(nidList);
+            Integer fileId = uploadService.saveUploadedFileInfo(file, importType, nidList.size(), null, started, null, null);
 
-                Date ended = new Date();
+            if (fileId != null) {
+                if (nidList != null && nidList.size() > 0) {
+                    int count = uploadService.saveNidListToDb(nidList, fileId);
 
-                model.addAttribute("totalCount", nidList.size());
-                model.addAttribute("importCount", count);
-                model.addAttribute("importStarted", started);
-                model.addAttribute("importEnded", ended);
-                model.addAttribute("status", true);
+                    Date ended = new Date();
+
+                    uploadService.saveUploadedFileInfo(file, importType, nidList.size(), count, started, ended, fileId);
+
+                    model.addAttribute("totalCount", nidList.size());
+                    model.addAttribute("importCount", count);
+                    model.addAttribute("importStarted", started);
+                    model.addAttribute("importEnded", ended);
+                    model.addAttribute("status", true);
+                    return;
+                }
             }
+            model.addAttribute("message", "An error occurred while processing the file.");
+            model.addAttribute("status", false);
         } catch (IOException e) {
             throw new RuntimeException("fail to parse Excel file: " + e.getMessage());
         }
     }
 
-    private void processBrnList(InputStream is, String importType, Model model) {
+    private void processBrnList(MultipartFile file, String importType, Model model) {
         try {
             Date started = new Date();
+            InputStream is = file.getInputStream();
             Workbook workbook = new XSSFWorkbook(is);
             Sheet sheet = workbook.getSheet(SHEET);
             Iterator<Row> rows = sheet.iterator();
@@ -156,25 +168,35 @@ public class ExcelService {
 
             workbook.close();
 
-            if (brnList != null && brnList.size() > 0) {
-                int count = uploadService.saveBrnListToDb(brnList);
+            Integer fileId = uploadService.saveUploadedFileInfo(file, importType, brnList.size(), null, started, null, null);
 
-                Date ended = new Date();
+            if (fileId != null) {
+                if (brnList != null && brnList.size() > 0) {
+                    int count = uploadService.saveBrnListToDb(brnList, fileId);
 
-                model.addAttribute("totalCount", brnList.size());
-                model.addAttribute("importCount", count);
-                model.addAttribute("importStarted", started);
-                model.addAttribute("importEnded", ended);
-                model.addAttribute("status", true);
+                    Date ended = new Date();
+
+                    uploadService.saveUploadedFileInfo(file, importType, brnList.size(), count, started, ended, fileId);
+
+                    model.addAttribute("totalCount", brnList.size());
+                    model.addAttribute("importCount", count);
+                    model.addAttribute("importStarted", started);
+                    model.addAttribute("importEnded", ended);
+                    model.addAttribute("status", true);
+                    return;
+                }
             }
+            model.addAttribute("message", "An error occurred while processing the file.");
+            model.addAttribute("status", false);
         } catch (IOException e) {
             throw new RuntimeException("fail to parse Excel file: " + e.getMessage());
         }
     }
 
-    private void processMfsInfoList(InputStream is, String importType, Model model) {
+    private void processMfsInfoList(MultipartFile file, String importType, Model model) {
         try {
             Date started = new Date();
+            InputStream is = file.getInputStream();
             Workbook workbook = new XSSFWorkbook(is);
             Sheet sheet = workbook.getSheet(SHEET);
             Iterator<Row> rows = sheet.iterator();
@@ -218,29 +240,38 @@ public class ExcelService {
 
             workbook.close();
 
-            if (mfsInfoList != null && mfsInfoList.size() > 0) {
-                int count = uploadService.saveMfsListToDb(mfsInfoList);
+            Integer fileId = uploadService.saveUploadedFileInfo(file, importType, mfsInfoList.size(), null, started, null, null);
 
-                Date ended = new Date();
+            if (fileId != null) {
+                if (mfsInfoList != null && mfsInfoList.size() > 0) {
+                    int count = uploadService.saveMfsListToDb(mfsInfoList, fileId);
 
-                model.addAttribute("totalCount", mfsInfoList.size());
-                model.addAttribute("importCount", count);
-                model.addAttribute("importStarted", started);
-                model.addAttribute("importEnded", ended);
-                model.addAttribute("status", true);
+                    Date ended = new Date();
+
+                    uploadService.saveUploadedFileInfo(file, importType, mfsInfoList.size(), count, started, ended, fileId);
+
+                    model.addAttribute("totalCount", mfsInfoList.size());
+                    model.addAttribute("importCount", count);
+                    model.addAttribute("importStarted", started);
+                    model.addAttribute("importEnded", ended);
+                    model.addAttribute("status", true);
+                    return;
+                }
             }
+            model.addAttribute("message", "An error occurred while processing the file.");
+            model.addAttribute("status", false);
         } catch (IOException e) {
             throw new RuntimeException("fail to parse Excel file: " + e.getMessage());
         }
     }
 
-    public void processExcelFile(InputStream is, String importType, Model model) {
+    public void processExcelFile(MultipartFile file, String importType, Model model) {
         if (importType.equals("N")) {
-            processNidList(is, importType, model);
+            processNidList(file, importType, model);
         } else if (importType.equals("B")) {
-            processBrnList(is, importType, model);
+            processBrnList(file, importType, model);
         } else if (importType.equals("M")) {
-            processMfsInfoList(is, importType, model);
+            processMfsInfoList(file, importType, model);
         }
     }
 }

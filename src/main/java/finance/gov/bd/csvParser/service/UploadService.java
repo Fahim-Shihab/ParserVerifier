@@ -7,14 +7,17 @@ import finance.gov.bd.csvParser.dto.BrnVerificationCsv;
 import finance.gov.bd.csvParser.dto.MfsVerificationCsv;
 import finance.gov.bd.csvParser.dto.NidVerificationCsv;
 import finance.gov.bd.csvParser.model.BrnVerificationLog;
+import finance.gov.bd.csvParser.model.FileInfo;
 import finance.gov.bd.csvParser.model.MfsVerificationLog;
 import finance.gov.bd.csvParser.model.NidVerificationLog;
 import finance.gov.bd.csvParser.repository.BrnVerificationLogRepo;
+import finance.gov.bd.csvParser.repository.FileInfoRepository;
 import finance.gov.bd.csvParser.repository.MfsVerificationLogRepo;
 import finance.gov.bd.csvParser.repository.NidVerificationLogRepo;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.ui.Model;
+import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.BufferedReader;
@@ -35,6 +38,32 @@ public class UploadService {
     @Autowired
     MfsVerificationLogRepo mfsVerificationLogRepo;
 
+    @Autowired
+    FileInfoRepository fileInfoRepo;
+
+    public Integer saveUploadedFileInfo(MultipartFile file, String importType, Integer totalCount, Integer importCount, Date startedAt, Date endedAt, Integer fileId) {
+        FileInfo fileInfo = new FileInfo();
+        if (fileId != null) {
+            fileInfo = fileInfoRepo.findById(fileId).orElse(new FileInfo());
+        }
+        String ext = StringUtils.getFilenameExtension(file.getOriginalFilename());
+        fileInfo.setFileName(file.getOriginalFilename());
+        fileInfo.setFileExtension(ext);
+        fileInfo.setImportType(importType);
+        fileInfo.setTotalRowCount(totalCount);
+        fileInfo.setImportCount(importCount);
+        fileInfo.setImportStartedAt(startedAt);
+        fileInfo.setImportEndedAt(endedAt);
+        try {
+            FileInfo fileInfoEntity = fileInfoRepo.save(fileInfo);
+            return fileInfoEntity.getId();
+        } catch (Exception e) {
+            System.out.println("Error during saving uploaded file info");
+            e.printStackTrace();
+            throw e;
+        }
+    }
+
     public void processCsvFile(MultipartFile file, String importType, Model model) {
         Date started = new Date();
         try (Reader reader = new BufferedReader(new InputStreamReader(file.getInputStream()))) {
@@ -46,16 +75,22 @@ public class UploadService {
 
                 List<NidVerificationCsv> list = csvToBean.parse();
 
-                int count = saveNidListToDb(list);
+                Integer fileId = saveUploadedFileInfo(file, importType, list.size(), null, started, null, null);
+                if (fileId != null) {
+                    int count = saveNidListToDb(list, fileId);
 
-                Date ended = new Date();
+                    Date ended = new Date();
 
-                model.addAttribute("totalCount", list.size());
-                model.addAttribute("importCount", count);
-                model.addAttribute("importStarted", started);
-                model.addAttribute("importEnded", ended);
+                    saveUploadedFileInfo(file, importType, list.size(), count, started, ended, fileId);
 
-                model.addAttribute("status", true);
+                    model.addAttribute("totalCount", list.size());
+                    model.addAttribute("importCount", count);
+                    model.addAttribute("importStarted", started);
+                    model.addAttribute("importEnded", ended);
+
+                    model.addAttribute("status", true);
+                    return;
+                }
             } else if (importType != null && importType.equals("B")) {
                 CsvToBean<BrnVerificationCsv> csvToBean = new CsvToBeanBuilder(reader)
                         .withType(BrnVerificationCsv.class)
@@ -64,16 +99,22 @@ public class UploadService {
 
                 List<BrnVerificationCsv> list = csvToBean.parse();
 
-                int count = saveBrnListToDb(list);
+                Integer fileId = saveUploadedFileInfo(file, importType, list.size(), null, started, null, null);
+                if (fileId != null) {
+                    int count = saveBrnListToDb(list, fileId);
 
-                Date ended = new Date();
+                    Date ended = new Date();
 
-                model.addAttribute("totalCount", list.size());
-                model.addAttribute("importCount", count);
-                model.addAttribute("importStarted", started);
-                model.addAttribute("importEnded", ended);
+                    saveUploadedFileInfo(file, importType, list.size(), count, started, ended, fileId);
 
-                model.addAttribute("status", true);
+                    model.addAttribute("totalCount", list.size());
+                    model.addAttribute("importCount", count);
+                    model.addAttribute("importStarted", started);
+                    model.addAttribute("importEnded", ended);
+
+                    model.addAttribute("status", true);
+                    return;
+                }
             } else if (importType != null && importType.equals("M")) {
                 CsvToBean<MfsVerificationCsv> csvToBean = new CsvToBeanBuilder(reader)
                         .withType(MfsVerificationCsv.class)
@@ -82,17 +123,26 @@ public class UploadService {
 
                 List<MfsVerificationCsv> list = csvToBean.parse();
 
-                int count = saveMfsListToDb(list);
+                Integer fileId = saveUploadedFileInfo(file, importType, list.size(), null, started, null, null);
 
-                Date ended = new Date();
+                if (fileId != null) {
+                    int count = saveMfsListToDb(list, fileId);
 
-                model.addAttribute("totalCount", list.size());
-                model.addAttribute("importCount", count);
-                model.addAttribute("importStarted", started);
-                model.addAttribute("importEnded", ended);
+                    Date ended = new Date();
 
-                model.addAttribute("status", true);
+                    saveUploadedFileInfo(file, importType, list.size(), count, started, ended, fileId);
+
+                    model.addAttribute("totalCount", list.size());
+                    model.addAttribute("importCount", count);
+                    model.addAttribute("importStarted", started);
+                    model.addAttribute("importEnded", ended);
+
+                    model.addAttribute("status", true);
+                    return;
+                }
             }
+            model.addAttribute("message", "An error occurred while processing the CSV file.");
+            model.addAttribute("status", false);
         } catch (Exception ex) {
             ex.printStackTrace();
             model.addAttribute("message", "An error occurred while processing the CSV file.");
@@ -100,7 +150,7 @@ public class UploadService {
         }
     }
 
-    public int saveNidListToDb(List<NidVerificationCsv> list) {
+    public int saveNidListToDb(List<NidVerificationCsv> list, Integer fileId) {
 
         List<NidVerificationLog> logs = new ArrayList<>();
 
@@ -136,6 +186,7 @@ public class UploadService {
             log.setExcelNameBn(dto.getNameBn());
             log.setExcelNameEn(dto.getNameEn());
             log.setNidVerifyStatus(0);
+            log.setFileId(fileId);
 
             logs.add(log);
             count++;
@@ -150,7 +201,7 @@ public class UploadService {
         }
     }
 
-    public int saveBrnListToDb(List<BrnVerificationCsv> list) {
+    public int saveBrnListToDb(List<BrnVerificationCsv> list, Integer fileId) {
 
         List<BrnVerificationLog> logs = new ArrayList<>();
 
@@ -180,6 +231,7 @@ public class UploadService {
             log.setExcelNameBn(dto.getNameBn());
             log.setExcelNameEn(dto.getNameEn());
             log.setBrnVerifyStatus(0);
+            log.setFileId(fileId);
 
             logs.add(log);
             count++;
@@ -194,7 +246,7 @@ public class UploadService {
         }
     }
 
-    public int saveMfsListToDb(List<MfsVerificationCsv> list) {
+    public int saveMfsListToDb(List<MfsVerificationCsv> list, Integer fileId) {
 
         List<MfsVerificationLog> logs = new ArrayList<>();
 
@@ -226,9 +278,18 @@ public class UploadService {
                 continue;
             }
 
-            log.setMobileNumber(dto.getMobileNumber());
-            log.setMfsName(dto.getMfsName());
+            if (dto.getMobileNumber() != null && dto.getMobileNumber().length() > 9 && dto.getMobileNumber().length() < 15) {
+                log.setMobileNumber(dto.getMobileNumber());
+            } else {
+                continue;
+            }
+            if (dto.getMfsName() != null && dto.getMfsName().length() <= 10) {
+                log.setMfsName(dto.getMfsName());
+            } else {
+                continue;
+            }
             log.setMfsVerifyStatus(0);
+            log.setFileId(fileId);
 
             logs.add(log);
             count++;
