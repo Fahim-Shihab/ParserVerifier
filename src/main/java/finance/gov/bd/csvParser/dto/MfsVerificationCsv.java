@@ -14,7 +14,7 @@ import java.math.BigInteger;
 @AllArgsConstructor
 public class MfsVerificationCsv {
     @CsvBindByName
-    private BigInteger nid;
+    private String nid;
     @CsvBindByName
     private String mfsName;
     @CsvBindByName

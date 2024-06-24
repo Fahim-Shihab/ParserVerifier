@@ -14,7 +14,7 @@ import java.math.BigInteger;
 @AllArgsConstructor
 public class BrnVerificationCsv {
     @CsvBindByName
-    private BigInteger birthRegNo;
+    private String birthRegNo;
     @CsvBindByName
     private String dateOfBirth;
     @CsvBindByName

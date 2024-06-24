@@ -16,10 +16,7 @@ import java.io.InputStream;
 import java.math.BigInteger;
 import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.Iterator;
-import java.util.List;
+import java.util.*;
 
 @Service
 public class ExcelService {
@@ -55,24 +52,42 @@ public class ExcelService {
                 Iterator<Cell> cellsInRow = currentRow.iterator();
                 NidVerificationCsv nidObj = new NidVerificationCsv();
                 int cellIdx = 0;
+
+                Set<String> nidInMemory = new HashSet<>();
+
                 while (cellsInRow.hasNext()) {
                     Cell currentCell = cellsInRow.next();
                     switch (cellIdx) {
                         case 0:
-                            double numericValue = Double.parseDouble(currentCell.toString());
-                            if (String.valueOf(numericValue).contains("E")) {
-                                DecimalFormat df = new DecimalFormat("0");
-                                String plainNumber = df.format(numericValue);
-                                nidObj.setNid(new BigInteger(plainNumber));
+                            try {
+                                double numericValue = Double.parseDouble(currentCell.toString());
+                                if (String.valueOf(numericValue).contains("E")) {
+                                    DecimalFormat df = new DecimalFormat("0");
+                                    String plainNumber = df.format(numericValue);
+                                    if (!nidInMemory.contains(plainNumber)) {
+                                        nidObj.setNid(plainNumber);
+                                        nidInMemory.add(plainNumber);
+                                    } else {
+                                        continue;
+                                    }
+                                }
+                                break;
+                            } catch (Exception e) {
+                                e.printStackTrace();
+                                continue;
                             }
-                            break;
                         case 1:
-                            CellType c = currentCell.getCellType();
-                            Date dateValue = currentCell.getDateCellValue();
-                            SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
-                            String formattedDate = dateFormat.format(dateValue);
-                            nidObj.setDateOfBirth(formattedDate);
-                            break;
+                            try {
+                                CellType c = currentCell.getCellType();
+                                Date dateValue = currentCell.getDateCellValue();
+                                SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
+                                String formattedDate = dateFormat.format(dateValue);
+                                nidObj.setDateOfBirth(formattedDate);
+                                break;
+                            } catch (Exception e) {
+                                e.printStackTrace();
+                                continue;
+                            }
                         case 2:
                             nidObj.setNameEn(currentCell.toString());
                             break;
@@ -142,7 +157,7 @@ public class ExcelService {
                             if (String.valueOf(numericValue).contains("E")) {
                                 DecimalFormat df = new DecimalFormat("0");
                                 String plainNumber = df.format(numericValue);
-                                brnObj.setBirthRegNo(new BigInteger(plainNumber));
+                                brnObj.setBirthRegNo(plainNumber);
                             }
                             break;
                         case 1:
@@ -221,7 +236,7 @@ public class ExcelService {
                             if (String.valueOf(numericValue).contains("E")) {
                                 DecimalFormat df = new DecimalFormat("0");
                                 String plainNumber = df.format(numericValue);
-                                mfsVerifyObj.setNid(new BigInteger(plainNumber));
+                                mfsVerifyObj.setNid(plainNumber);
                             }
                             break;
                         case 1:

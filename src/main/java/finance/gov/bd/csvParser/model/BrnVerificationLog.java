@@ -16,7 +16,7 @@ public class BrnVerificationLog {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
     @Column(name = "birth_reg_no", unique = true)
-    private BigInteger birthRegNo;
+    private String birthRegNo;
     @Column(name = "date_of_birth")
     @Temporal(TemporalType.DATE)
     private Date dateOfBirth;

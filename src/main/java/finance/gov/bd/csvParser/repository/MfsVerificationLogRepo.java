@@ -12,8 +12,8 @@ import java.util.List;
 
 @Repository
 public interface MfsVerificationLogRepo extends JpaRepository<MfsVerificationLog, Integer> {
-    public List<MfsVerificationLog> findByNid(BigInteger nid);
-    public List<MfsVerificationLog> findByAlternateNid(BigInteger alternateNid);
+    public List<MfsVerificationLog> findByNid(String nid);
+    public List<MfsVerificationLog> findByAlternateNid(String alternateNid);
     @Query(value = "select * from mfs_verification_log where 1=1 " +
             " and nid is not null and mobile_number is not null and mfs_name is not null " +
             " and mfs_verify_status = :mfsVerifyStatus order by id limit :size", nativeQuery = true)
@@ -22,4 +22,10 @@ public interface MfsVerificationLogRepo extends JpaRepository<MfsVerificationLog
     @Query(value = "select count(*) from mfs_verification_log where 1=1 and nid is not null " +
             " and mfs_name is not null and mobile_number is not null and mfs_verify_status = :mfsVerifyStatus", nativeQuery = true)
     public long countByNidVerifyStatus(@Param("mfsVerifyStatus") Integer mfsVerifyStatus);
+
+    @Query(value = "select * from mfs_verification_log where 1=1 " +
+            " and nid is not null and mobile_number is not null and mfs_name is not null " +
+            " and mfs_verify_status = :mfsVerifyStatus and id >= :offset order by id limit :size", nativeQuery = true)
+    public List<MfsVerificationLog> findByMfsVerifyStatusAndOffset(@Param("mfsVerifyStatus") Integer mfsVerifyStatus,
+                                                                   @Param("size") Integer size, @Param("offset") Integer offset);
 }

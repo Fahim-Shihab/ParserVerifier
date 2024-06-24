@@ -170,6 +170,7 @@ public class UploadService {
                     }
                 }
             } else {
+                System.out.println("Invalid Nid:" + dto.getNid());
                 continue;
             }
 
@@ -181,6 +182,7 @@ public class UploadService {
                 }
                 log.setDateOfBirth(d);
             } else {
+                System.out.println("Valid Nid:" + dto.getNid() + "Invalid dob: "+dto.getDateOfBirth());
                 continue;
             }
             log.setExcelNameBn(dto.getNameBn());

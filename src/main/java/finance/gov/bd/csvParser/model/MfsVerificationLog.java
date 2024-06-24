@@ -16,9 +16,9 @@ public class MfsVerificationLog {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
     @Column(name = "nid")
-    private BigInteger nid;
+    private String nid;
     @Column(name = "alternate_nid")
-    private BigInteger alternateNid;
+    private String alternateNid;
     @Column(name = "mobile_number")
     private String mobileNumber;
     @Column(name = "mfs_name")

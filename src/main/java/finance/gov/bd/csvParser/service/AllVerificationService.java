@@ -10,6 +10,8 @@ import finance.gov.bd.csvParser.model.NidVerificationLog;
 import finance.gov.bd.csvParser.repository.BrnVerificationLogRepo;
 import finance.gov.bd.csvParser.repository.MfsVerificationLogRepo;
 import finance.gov.bd.csvParser.repository.NidVerificationLogRepo;
+import finance.gov.bd.csvParser.threads.NidVerifyThread;
+import finance.gov.bd.csvParser.threads.MfsVerifyThread;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.stereotype.Service;
@@ -25,9 +27,13 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import org.json.JSONException;
 import org.json.JSONObject;
+
+import javax.persistence.EntityManager;
 
 @Service
 public class AllVerificationService {
@@ -35,6 +41,9 @@ public class AllVerificationService {
     private static String token = "";
     private GsonBuilder builder = new GsonBuilder();
     private Gson gson = builder.create();
+
+    @Autowired
+    EntityManager em;
 
     @Autowired
     NidVerificationLogRepo nidVerificationLogRepo;
@@ -45,15 +54,87 @@ public class AllVerificationService {
     @Autowired
     MfsVerificationLogRepo mfsVerificationLogRepo;
 
+    private void nidVerifyThreads(VerificationRequest req) {
+        List<Object[]> result = em.createNativeQuery("select min(id) min, max(id) max from " +
+                " nid_verification_log where nid_verify_status="+req.getVerifyStatus()).getResultList();
+
+        Integer minId = -1;
+        Integer maxId = -1;
+
+        if (result != null && !result.isEmpty() && result.size() == 2) {
+            for (Object[] obj : result) {
+                minId = Integer.parseInt(obj[0] + "");
+                maxId = Integer.parseInt(obj[1] + "");
+            }
+        } else {
+            return;
+        }
+
+        Integer offset = minId;
+
+        if (minId != -1 && maxId != -1) {
+            Integer threadCount = maxId / 1000;
+
+            NidVerifyThread[] threads = new NidVerifyThread[threadCount+1];
+            for (int i=0; i<threadCount+1; i++) {
+                threads[i] = new NidVerifyThread("Thread-"+(i+1), offset, nidVerificationLogRepo, this);
+                offset += 1000;
+            }
+
+            ExecutorService pool = Executors.newCachedThreadPool();
+            for (int i=0; i<threadCount+1; i++) {
+                pool.execute(threads[i]);
+            }
+            pool.shutdown();
+        }
+    }
+
+    private void mfsVerifyThreads(VerificationRequest req) {
+        List<Object[]> result = em.createNativeQuery("select min(id) min, max(id) max from " +
+                " mfs_verification_log where mfs_verify_status="+req.getVerifyStatus()).getResultList();
+
+        Integer minId = -1;
+        Integer maxId = -1;
+
+        if (result != null && !result.isEmpty() && result.size() == 2) {
+            for (Object[] obj : result) {
+                minId = Integer.parseInt(obj[0] + "");
+                maxId = Integer.parseInt(obj[1] + "");
+            }
+        } else {
+            return;
+        }
+
+        Integer offset = minId;
+
+        if (minId != -1 && maxId != -1) {
+            Integer threadCount = maxId / 1000;
+
+            MfsVerifyThread[] threads = new MfsVerifyThread[threadCount+1];
+            for (int i=0; i<threadCount+1; i++) {
+                threads[i] = new MfsVerifyThread("Thread-"+(i+1), offset, mfsVerificationLogRepo, this);
+                offset += 1000;
+            }
+
+            ExecutorService pool = Executors.newCachedThreadPool();
+            for (int i=0; i<threadCount+1; i++) {
+                pool.execute(threads[i]);
+            }
+            pool.shutdown();
+        }
+    }
+
     public ServiceResponse verify(VerificationRequest req) {
         try {
             if (req.getCheckBy() != null) {
                 if (req.getCheckBy().equals("N")) {
-                    verifyNid(req);
+//                    verifyNid(req);
+                    nidVerifyThreads(req);
                 } else if (req.getCheckBy().equals("B")) {
                     verifyBrn(req);
                 } else if (req.getCheckBy().equals("M")) {
-                    verifyMfs(req);
+//                    verifyMfs(req);
+                    mfsVerifyThreads(req);
                 }
             }
             return new ServiceResponse();
@@ -89,9 +170,9 @@ public class AllVerificationService {
                                     String nid10 = response.getNidData().getNid10();
                                     String nid17 = response.getNidData().getNid17();
                                     if (nid10 != null && dto.getNid().toString().equals(nid10)) {
-                                        dto.setAlternateNid(new BigInteger(nid17));
+                                        dto.setAlternateNid(nid17);
                                     } else if (nid17 != null && dto.getNid().toString().equals(nid17)) {
-                                        dto.setAlternateNid(new BigInteger(nid10));
+                                        dto.setAlternateNid(nid10);
                                     }
                                 } else {
                                     dto.setNidVerifyStatus(2);
@@ -185,13 +266,13 @@ public class AllVerificationService {
                                     if (dto.getAlternateNid() != null) {
                                         MFSResponse response2 = getMFSData(dto.getMfsName().toLowerCase(), dto.getAlternateNid().toString(), dto.getMobileNumber());
                                         if (response2 != null) {
-                                            if (response2.getAccountExist() == true && response.getAccountExist() == false) {
+                                            if (response2.getAccountExist() != null && response2.getAccountExist() == true && response.getAccountExist() == false) {
                                                 response.setAccountExist(true);
                                             }
-                                            if (response2.getNIDMatched() == true && response.getNIDMatched() == false) {
+                                            if (response2.getNIDMatched() != null && response2.getNIDMatched() == true && response.getNIDMatched() == false) {
                                                 response.setNIDMatched(true);
                                             }
-                                            if (response2.getNIDMobileMatched() == true && response.getNIDMobileMatched() == false) {
+                                            if (response2.getNIDMobileMatched() != null && response2.getNIDMobileMatched() == true && response.getNIDMobileMatched() == false) {
                                                 response.setNIDMobileMatched(true);
                                             }
                                         }
@@ -226,7 +307,7 @@ public class AllVerificationService {
         }
     }
 
-    private MfsVerificationLog updateMfsAccountInfo(MfsVerificationLog dto, MFSResponse response) {
+    public MfsVerificationLog updateMfsAccountInfo(MfsVerificationLog dto, MFSResponse response) {
         if (response.getAccountExist() != null) {
             if (response.getAccountExist())   dto.setAccountExist(1);
             else    dto.setAccountExist(2);
@@ -312,7 +393,7 @@ public class AllVerificationService {
         }
     }
 
-    private BECResponse getNidData(String nid, String dob) {
+    public BECResponse getNidData(String nid, String dob) {
         JSONObject becJsonResult = null;
 
         try {

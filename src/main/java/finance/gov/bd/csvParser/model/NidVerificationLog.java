@@ -16,9 +16,9 @@ public class NidVerificationLog {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
     @Column(name = "nid", unique = true)
-    private BigInteger nid;
+    private String nid;
     @Column(name = "alternate_nid", unique = true)
-    private BigInteger alternateNid;
+    private String alternateNid;
     @Column(name = "date_of_birth")
     @Temporal(TemporalType.DATE)
     private Date dateOfBirth;
