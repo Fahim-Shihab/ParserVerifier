@@ -31,68 +31,68 @@ public class NidVerifyThread extends Thread {
         try {
             VerificationRequest req = new VerificationRequest();
             req.setVerifyStatus(0);
-            verify(req);
+//            verify(req);
         } catch (Exception e) {
             System.out.println("Error in thread: "+threadName+"\n"+e.toString());
         }
     }
-
-    public void verify(VerificationRequest req) {
-        Integer size = 20;
-
-        long count = 1000;
-
-        int index = 0;
-
-        while (index < count) {
-
-            List<NidVerificationLog> list = nidVerificationLogRepo.findByNidVerifyStatusAndOffset(0, size, offset);
-
-            List<NidVerificationLog> verifyList = new ArrayList<>();
-
-            if (list != null && list.size() > 0) {
-                for (NidVerificationLog dto : list) {
-                    if (dto.getNid() != null && dto.getDateOfBirth() != null) {
-                        try {
-                            BECResponse response = allVerificationService.getNidData(dto.getNid().toString(), dto.getDateOfBirth().toString());
-                            if (response != null) {
-                                if (response.isOperationResult() && response.getNidData() != null) {
-                                    dto.setNidVerifyStatus(1);
-                                    dto.setNameEn(response.getNidData().getNameEn());
-                                    dto.setNameBn(response.getNidData().getName());
-                                    String nid10 = response.getNidData().getNid10();
-                                    String nid17 = response.getNidData().getNid17();
-                                    if (nid10 != null && dto.getNid().toString().equals(nid10)) {
-                                        dto.setAlternateNid(nid17);
-                                    } else if (nid17 != null && dto.getNid().toString().equals(nid17)) {
-                                        dto.setAlternateNid(nid10);
-                                    }
-                                } else {
-                                    dto.setNidVerifyStatus(2);
-                                }
-                            } else {
-                                dto.setNidVerifyStatus(3);
-                            }
-
-                            dto.setLastVerifyAt(new java.util.Date());
-                            verifyList.add(dto);
-
-                        } catch (Exception ex) {
-                            dto.setNidVerifyStatus(3);
-                            dto.setLastVerifyAt(new java.util.Date());
-                            verifyList.add(dto);
-                            ex.printStackTrace();
-                        }
-                    }
-                }
-            }
-
-            if (verifyList.size() > 0) {
-                nidVerificationLogRepo.saveAll(verifyList);
-            }
-
-            index += size;
-        }
-    }
+//
+//    public void verify(VerificationRequest req) {
+//        Integer size = 20;
+//
+//        long count = 1000;
+//
+//        int index = 0;
+//
+//        while (index < count) {
+//
+//            List<NidVerificationLog> list = nidVerificationLogRepo.findByNidVerifyStatusAndOffset(0, size, offset);
+//
+//            List<NidVerificationLog> verifyList = new ArrayList<>();
+//
+//            if (list != null && list.size() > 0) {
+//                for (NidVerificationLog dto : list) {
+//                    if (dto.getNid() != null && dto.getDateOfBirth() != null) {
+//                        try {
+//                            BECResponse response = allVerificationService.getNidData(dto.getNid().toString(), dto.getDateOfBirth().toString());
+//                            if (response != null) {
+//                                if (response.isOperationResult() && response.getNidData() != null) {
+//                                    dto.setNidVerifyStatus(1);
+//                                    dto.setNameEn(response.getNidData().getNameEn());
+//                                    dto.setNameBn(response.getNidData().getName());
+//                                    String nid10 = response.getNidData().getNid10();
+//                                    String nid17 = response.getNidData().getNid17();
+//                                    if (nid10 != null && dto.getNid().toString().equals(nid10)) {
+//                                        dto.setAlternateNid(nid17);
+//                                    } else if (nid17 != null && dto.getNid().toString().equals(nid17)) {
+//                                        dto.setAlternateNid(nid10);
+//                                    }
+//                                } else {
+//                                    dto.setNidVerifyStatus(2);
+//                                }
+//                            } else {
+//                                dto.setNidVerifyStatus(3);
+//                            }
+//
+//                            dto.setLastVerifyAt(new java.util.Date());
+//                            verifyList.add(dto);
+//
+//                        } catch (Exception ex) {
+//                            dto.setNidVerifyStatus(3);
+//                            dto.setLastVerifyAt(new java.util.Date());
+//                            verifyList.add(dto);
+//                            ex.printStackTrace();
+//                        }
+//                    }
+//                }
+//            }
+//
+//            if (verifyList.size() > 0) {
+//                nidVerificationLogRepo.saveAll(verifyList);
+//            }
+//
+//            index += size;
+//        }
+//    }
 }
 

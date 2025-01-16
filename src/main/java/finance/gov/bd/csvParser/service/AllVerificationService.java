@@ -2,25 +2,24 @@ package finance.gov.bd.csvParser.service;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import finance.gov.bd.csvParser.common.Data;
 import finance.gov.bd.csvParser.dto.request.VerificationRequest;
 import finance.gov.bd.csvParser.dto.response.*;
 import finance.gov.bd.csvParser.model.BrnVerificationLog;
 import finance.gov.bd.csvParser.model.MfsVerificationLog;
-import finance.gov.bd.csvParser.model.NidVerificationLog;
-import finance.gov.bd.csvParser.repository.BrnVerificationLogRepo;
-import finance.gov.bd.csvParser.repository.MfsVerificationLogRepo;
-import finance.gov.bd.csvParser.repository.NidVerificationLogRepo;
+import finance.gov.bd.csvParser.repository.*;
+import finance.gov.bd.csvParser.threads.AllVerifyThread;
 import finance.gov.bd.csvParser.threads.NidVerifyThread;
 import finance.gov.bd.csvParser.threads.MfsVerifyThread;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.i18n.LocaleContextHolder;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.io.BufferedReader;
 import java.io.DataOutputStream;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.math.BigInteger;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
@@ -33,6 +32,7 @@ import java.util.concurrent.Executors;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import javax.annotation.PostConstruct;
 import javax.persistence.EntityManager;
 
 @Service
@@ -53,6 +53,17 @@ public class AllVerificationService {
 
     @Autowired
     MfsVerificationLogRepo mfsVerificationLogRepo;
+
+    @Autowired
+    SrNeedVerifyRepo srNeedVerifyRepo;
+
+    int verifyThread = 200;
+
+    @Autowired
+    NidInfoRepo nidInfoRepo;
+
+    @Autowired
+    BirthRegInfoRepo birthRegInfoRepo;
 
     private void nidVerifyThreads(VerificationRequest req) {
         List<Object[]> result = em.createNativeQuery("select min(id) min, max(id) max from " +
@@ -124,6 +135,12 @@ public class AllVerificationService {
         }
     }
 
+    @Scheduled(initialDelay = 5 * 1000, fixedDelay = 24 * 60 * 60 * 1000)
+    public void startVerify() {
+        System.out.println("Start");
+        verifyThreadsV1();
+    }
+
     public ServiceResponse verify(VerificationRequest req) {
         try {
             if (req.getCheckBy() != null) {
@@ -135,6 +152,8 @@ public class AllVerificationService {
                 } else if (req.getCheckBy().equals("M")) {
 //                    verifyMfs(req);
                     mfsVerifyThreads(req);
+                } else if (req.getCheckBy().equals("A")) {
+                    verifyThreadsV1();
                 }
             }
             return new ServiceResponse();
@@ -144,62 +163,26 @@ public class AllVerificationService {
         }
     }
 
-    private void verifyNid(VerificationRequest req) {
-        Integer size = req.getSize() != null ? req.getSize() : 1000;
-
-        long count = nidVerificationLogRepo.countByNidVerifyStatus(0);
-
-        int index = 0;
-
-        while (index < count) {
-
-            List<NidVerificationLog> list = nidVerificationLogRepo.findByNidVerifyStatus(req.getVerifyStatus(), size);
-
-            List<NidVerificationLog> verifyList = new ArrayList<>();
-
-            if (list != null && list.size() > 0) {
-                for (NidVerificationLog dto : list) {
-                    if (dto.getNid() != null && dto.getDateOfBirth() != null) {
-                        try {
-                            BECResponse response = getNidData(dto.getNid().toString(), dto.getDateOfBirth().toString());
-                            if (response != null) {
-                                if (response.isOperationResult() && response.getNidData() != null) {
-                                    dto.setNidVerifyStatus(1);
-                                    dto.setNameEn(response.getNidData().getNameEn());
-                                    dto.setNameBn(response.getNidData().getName());
-                                    String nid10 = response.getNidData().getNid10();
-                                    String nid17 = response.getNidData().getNid17();
-                                    if (nid10 != null && dto.getNid().toString().equals(nid10)) {
-                                        dto.setAlternateNid(nid17);
-                                    } else if (nid17 != null && dto.getNid().toString().equals(nid17)) {
-                                        dto.setAlternateNid(nid10);
-                                    }
-                                } else {
-                                    dto.setNidVerifyStatus(2);
-                                }
-                            } else {
-                                dto.setNidVerifyStatus(3);
-                            }
-
-                            dto.setLastVerifyAt(new java.util.Date());
-                            verifyList.add(dto);
-
-                        } catch (Exception ex) {
-                            dto.setNidVerifyStatus(3);
-                            dto.setLastVerifyAt(new java.util.Date());
-                            verifyList.add(dto);
-                            ex.printStackTrace();
-                        }
-                    }
-                }
-            }
-
-            if (verifyList.size() > 0) {
-                nidVerificationLogRepo.saveAll(verifyList);
-            }
-
-            index += size;
+    private void verifyThreadsV1() {
+        long nidVerifyRequiredCount = srNeedVerifyRepo.countVerificationPending();
+        if (nidVerifyRequiredCount == 0) {
+            System.out.println("No data to verify. Exiting");
+            return;
         }
+        Double r = (double) (nidVerifyRequiredCount / verifyThread);
+        long recordsPerThread = r.longValue() + 1;
+
+        AllVerifyThread[] threads = new AllVerifyThread[verifyThread];
+        ExecutorService pool = Executors.newCachedThreadPool();
+        Long currentOffset = 0L;
+        for (int i=0; i < verifyThread; i++) {
+            threads[i] = new AllVerifyThread("Thread-"+(i+1), currentOffset, recordsPerThread,
+                    srNeedVerifyRepo, nidInfoRepo, birthRegInfoRepo, this, em);
+            currentOffset += recordsPerThread;
+            pool.execute(threads[i]);
+        }
+        pool.shutdown();
+        System.out.println("Completed all verification");
     }
 
     private void verifyBrn(VerificationRequest req) {
@@ -341,7 +324,6 @@ public class AllVerificationService {
             System.out.println("Get Token Call");
 
             URL url = new URL(urlStr + "ibas2api/api/token");
-            System.out.println("Toke Url" + urlStr + "ibas2api/api/token");
             HttpURLConnection con = (HttpURLConnection) url.openConnection();
 
             con.setRequestMethod("POST");
@@ -352,7 +334,7 @@ public class AllVerificationService {
             con.setDoOutput(true);
             con.setDoInput(true);
             String userpass = "HSP:HSPA2D0183A-AD55-4571-AB5D-C4294A6FE7DF";
-            String urlParameters = "username=" + "hsp" + "&password=" + "bangladesh" + "&grant_type=password";
+            String urlParameters = "username=" + "hsp" + "&password=" + "vuN0kN8BS1tALj2Ixt5hkw==___HSP" + "&grant_type=password";
             String encoded = Base64.getEncoder().encodeToString((userpass).getBytes(StandardCharsets.UTF_8));
             con.setRequestProperty("Authorization", "Basic " + encoded);
             DataOutputStream wr = new DataOutputStream(con.getOutputStream());
@@ -362,7 +344,7 @@ public class AllVerificationService {
 
             int responseCode = con.getResponseCode();
 
-            System.out.println("Reponse Code: " + responseCode);
+            System.out.println("Token Response Code: " + responseCode);
 
             if (responseCode == HttpURLConnection.HTTP_OK) {
                 BufferedReader in = new BufferedReader(new InputStreamReader(
@@ -393,14 +375,13 @@ public class AllVerificationService {
         }
     }
 
-    public BECResponse getNidData(String nid, String dob) {
+    public Data getNidData(String nid, String dob) {
         JSONObject becJsonResult = null;
 
         try {
             if (token.equals("")) {
                 getToken();
             }
-            System.out.println("Token :------------>" + token);
             URL url = new URL(urlStr + "ibas2api/api/saftynet/NIDInfo?nid=" + nid + "&dob=" + dob);
             HttpURLConnection con = (HttpURLConnection) url.openConnection();
             con.setRequestMethod("GET");
@@ -426,15 +407,14 @@ public class AllVerificationService {
                 }
                 JSONObject jsonResponse = new JSONObject(response.toString());
                 becJsonResult = jsonResponse;
-                System.out.println(jsonResponse);
             }
 
             NidResponse nidResponse = gson.fromJson(becJsonResult.toString(), NidResponse.class);
             System.out.println("NID Data from Ibas " + becJsonResult.toString());
-            BECResponse becResponse = getBECResponseEC(nidResponse);
-            if (nidResponse != null && nidResponse.getStatusCode().equals("SUCCESS")) {
-            }
-            return becResponse;
+//            BECResponse becResponse = getBECResponseEC(nidResponse);
+//            if (nidResponse != null && nidResponse.getStatusCode().equals("SUCCESS")) {
+//            }
+            return nidResponse.getSuccess().getData();
 
         } catch (Exception e) {
             System.out.println(e.getMessage());
@@ -494,8 +474,8 @@ public class AllVerificationService {
             System.out.println(jsonResponse);
 
             BRNResponse bRNReponse = gson.fromJson(response.toString(), BRNResponse.class);
-            System.out.println("brn: " + bRNReponse.getUbrn());
-            System.out.println("dob: " + bRNReponse.getDob());
+//            System.out.println("brn: " + bRNReponse.getUbrn());
+//            System.out.println("dob: " + bRNReponse.getDob());
 
             return bRNReponse;
         } catch (Exception e) {
@@ -504,7 +484,7 @@ public class AllVerificationService {
         }
     }
 
-    private BRNResponse getBRNdata(String brn, String dob) {
+    public BRNResponse getBRNdata(String brn, String dob) {
         try {
             if (token.equals("")) {
                 getToken();
@@ -518,7 +498,7 @@ public class AllVerificationService {
             con.setReadTimeout(30000);
 
             int responseCode = con.getResponseCode();
-            System.out.println("Reponse Code: " + responseCode);
+//            System.out.println("BRN Response Code: " + responseCode);
             if (responseCode == HttpURLConnection.HTTP_UNAUTHORIZED) {
                 token = "";
                 getToken();
@@ -531,7 +511,7 @@ public class AllVerificationService {
                     con2.setReadTimeout(30000);
 
                     int responseCode2 = con2.getResponseCode();
-                    System.out.println("Response Code: " + responseCode2);
+//                    System.out.println("BRN Response Code: " + responseCode2);
                     if (responseCode2 == HttpURLConnection.HTTP_OK) {
                         return processBRNResponse(con2.getInputStream());
                     } else {
