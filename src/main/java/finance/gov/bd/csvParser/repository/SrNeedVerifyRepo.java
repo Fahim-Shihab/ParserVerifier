@@ -11,12 +11,12 @@ import java.util.List;
 @Repository
 public interface SrNeedVerifyRepo extends JpaRepository<SrNeedVerify, Integer> {
 
-    @Query(value = "select * from sr_need_verify where 1=1 and verification_status=0 " +
+    @Query(value = "select * from sr_need_verify where 1=1 and verification_status in (0,3) " +
             " offset :offset limit :size", nativeQuery = true)
     List<SrNeedVerify> findByStatusAndOffset(
                                                                    @Param("size") Long size, @Param("offset") Long offset);
 
-    @Query(value = "select count(*) from sr_need_verify where verification_status=0", nativeQuery = true)
+    @Query(value = "select count(*) from sr_need_verify where verification_status in (0,3)", nativeQuery = true)
     Long countVerificationPending();
 
 }

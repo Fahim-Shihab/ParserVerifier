@@ -122,43 +122,55 @@ public class AllVerifyThread extends Thread {
                 if ((dto.getNid() != null || dto.getSmartId() != null) && dto.getDateOfBirth() != null) {
                     if (dto.getNid() != null) {
                         Data response = allVerificationService.getNidData(dto.getNid(), dto.getDateOfBirth().toString());
-                        if (response != null && response.getName() != null && response.getNameEn() != null) {
-                            System.out.println(threadName+ " NID verified successfully");
-                            if (dto.getSrBeneficiaryId() != null) {
-                                saveNidInfo(response, dto.getDateOfBirth(), dto.getSrBeneficiaryId(), null);
-                            } else if (dto.getGuardianId() != null) {
-                                saveNidInfo(response, dto.getDateOfBirth(), null, dto.getGuardianId());
+                        if (response != null) {
+                            if (response.getName() != null || response.getNameEn() != null) {
+                                System.out.println(threadName + " NID verified successfully");
+                                if (dto.getSrBeneficiaryId() != null) {
+                                    saveNidInfo(response, dto.getDateOfBirth(), dto.getSrBeneficiaryId(), null);
+                                } else if (dto.getGuardianId() != null) {
+                                    saveNidInfo(response, dto.getDateOfBirth(), null, dto.getGuardianId());
+                                }
+                                dto.setVerificationStatus(1);
+                            } else {
+                                dto.setVerificationStatus(2);
                             }
-                            dto.setVerificationStatus(1);
                         } else {
-                            dto.setVerificationStatus(2);
+                            dto.setVerificationStatus(3);
                         }
                         dto.setVerificationRunAt(new Date());
                         updatedList.add(dto);
                     } else if (dto.getSmartId() != null) {
                         Data response = allVerificationService.getNidData(dto.getSmartId(), dto.getDateOfBirth().toString());
-                        if (response != null && response.getName() != null && response.getNameEn() != null) {
-                            System.out.println(threadName+ " SmartId verified successfully");
-                            if (dto.getSrBeneficiaryId() != null) {
-                                saveNidInfo(response, dto.getDateOfBirth(), dto.getSrBeneficiaryId(), null);
-                            } else if (dto.getGuardianId() != null) {
-                                saveNidInfo(response, dto.getDateOfBirth(), null, dto.getGuardianId());
+                        if (response != null) {
+                            if (response.getName() != null || response.getNameEn() != null) {
+                                System.out.println(threadName + " SmartId verified successfully");
+                                if (dto.getSrBeneficiaryId() != null) {
+                                    saveNidInfo(response, dto.getDateOfBirth(), dto.getSrBeneficiaryId(), null);
+                                } else if (dto.getGuardianId() != null) {
+                                    saveNidInfo(response, dto.getDateOfBirth(), null, dto.getGuardianId());
+                                }
+                                dto.setVerificationStatus(1);
+                            } else {
+                                dto.setVerificationStatus(2);
                             }
-                            dto.setVerificationStatus(1);
                         } else {
-                            dto.setVerificationStatus(2);
+                            dto.setVerificationStatus(3);
                         }
                         dto.setVerificationRunAt(new Date());
                         updatedList.add(dto);
                     }
                 } else if (dto.getBirthRegNo() != null && dto.getDateOfBirth() != null) {
                     BRNResponse response = allVerificationService.getBRNdata(dto.getBirthRegNo(), dto.getDateOfBirth().toString());
-                    if (response != null && response.getPersonname() != null && response.getPersonnameEn() != null) {
-                        System.out.println(threadName+ " BRN verified successfully");
-                        saveBrnInfo(response, dto.getSrBeneficiaryId());
-                        dto.setVerificationStatus(1);
+                    if (response != null) {
+                        if (response.getPersonname() != null || response.getPersonnameEn() != null) {
+                            System.out.println(threadName + " BRN verified successfully");
+                            saveBrnInfo(response, dto.getSrBeneficiaryId());
+                            dto.setVerificationStatus(1);
+                        } else {
+                            dto.setVerificationStatus(2);
+                        }
                     } else {
-                        dto.setVerificationStatus(2);
+                        dto.setVerificationStatus(3);
                     }
                     dto.setVerificationRunAt(new Date());
                     updatedList.add(dto);

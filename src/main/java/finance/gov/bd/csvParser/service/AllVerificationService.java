@@ -12,6 +12,7 @@ import finance.gov.bd.csvParser.threads.AllVerifyThread;
 import finance.gov.bd.csvParser.threads.NidVerifyThread;
 import finance.gov.bd.csvParser.threads.MfsVerifyThread;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -64,6 +65,15 @@ public class AllVerificationService {
 
     @Autowired
     BirthRegInfoRepo birthRegInfoRepo;
+
+    @Value("${ibasapi.username}")
+    String ibasApiUsername;
+
+    @Value("${ibasapi.password}")
+    String ibasApiPassword;
+
+    @Value("${ibasapi.userpass}")
+    String ibasApiUserpass;
 
     private void nidVerifyThreads(VerificationRequest req) {
         List<Object[]> result = em.createNativeQuery("select min(id) min, max(id) max from " +
@@ -182,7 +192,6 @@ public class AllVerificationService {
             pool.execute(threads[i]);
         }
         pool.shutdown();
-        System.out.println("Completed all verification");
     }
 
     private void verifyBrn(VerificationRequest req) {
@@ -333,8 +342,8 @@ public class AllVerificationService {
             con.setReadTimeout(30000);
             con.setDoOutput(true);
             con.setDoInput(true);
-            String userpass = "HSP:HSPA2D0183A-AD55-4571-AB5D-C4294A6FE7DF";
-            String urlParameters = "username=" + "hsp" + "&password=" + "vuN0kN8BS1tALj2Ixt5hkw==___HSP" + "&grant_type=password";
+            String userpass = ibasApiUserpass;
+            String urlParameters = "username=" + ibasApiUsername + "&password=" + ibasApiPassword + "&grant_type=password";
             String encoded = Base64.getEncoder().encodeToString((userpass).getBytes(StandardCharsets.UTF_8));
             con.setRequestProperty("Authorization", "Basic " + encoded);
             DataOutputStream wr = new DataOutputStream(con.getOutputStream());
@@ -414,8 +423,11 @@ public class AllVerificationService {
 //            BECResponse becResponse = getBECResponseEC(nidResponse);
 //            if (nidResponse != null && nidResponse.getStatusCode().equals("SUCCESS")) {
 //            }
-            return nidResponse.getSuccess().getData();
-
+            if (nidResponse.getSuccess() != null && nidResponse.getSuccess().getData() != null) {
+                return nidResponse.getSuccess().getData();
+            } else {
+                return new Data();
+            }
         } catch (Exception e) {
             System.out.println(e.getMessage());
             return null;
