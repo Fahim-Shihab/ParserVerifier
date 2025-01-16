@@ -1,6 +1,7 @@
 package finance.gov.bd.csvParser.threads;
 
 import finance.gov.bd.csvParser.common.Data;
+import finance.gov.bd.csvParser.common.VerificationStatus;
 import finance.gov.bd.csvParser.dto.response.BRNResponse;
 import finance.gov.bd.csvParser.model.BirthRegInfo;
 import finance.gov.bd.csvParser.model.NidInfo;
@@ -130,12 +131,12 @@ public class AllVerifyThread extends Thread {
                                 } else if (dto.getGuardianId() != null) {
                                     saveNidInfo(response, dto.getDateOfBirth(), null, dto.getGuardianId());
                                 }
-                                dto.setVerificationStatus(1);
+                                dto.setVerificationStatus(VerificationStatus.VALID.ordinal());
                             } else {
-                                dto.setVerificationStatus(2);
+                                dto.setVerificationStatus(VerificationStatus.INVALID.ordinal());
                             }
                         } else {
-                            dto.setVerificationStatus(3);
+                            dto.setVerificationStatus(VerificationStatus.EXCEPTION.ordinal());
                         }
                         dto.setVerificationRunAt(new Date());
                         updatedList.add(dto);
@@ -149,12 +150,12 @@ public class AllVerifyThread extends Thread {
                                 } else if (dto.getGuardianId() != null) {
                                     saveNidInfo(response, dto.getDateOfBirth(), null, dto.getGuardianId());
                                 }
-                                dto.setVerificationStatus(1);
+                                dto.setVerificationStatus(VerificationStatus.VALID.ordinal());
                             } else {
-                                dto.setVerificationStatus(2);
+                                dto.setVerificationStatus(VerificationStatus.INVALID.ordinal());
                             }
                         } else {
-                            dto.setVerificationStatus(3);
+                            dto.setVerificationStatus(VerificationStatus.EXCEPTION.ordinal());
                         }
                         dto.setVerificationRunAt(new Date());
                         updatedList.add(dto);
@@ -165,12 +166,12 @@ public class AllVerifyThread extends Thread {
                         if (response.getPersonname() != null || response.getPersonnameEn() != null) {
                             System.out.println(threadName + " BRN verified successfully");
                             saveBrnInfo(response, dto.getSrBeneficiaryId());
-                            dto.setVerificationStatus(1);
+                            dto.setVerificationStatus(VerificationStatus.VALID.ordinal());
                         } else {
-                            dto.setVerificationStatus(2);
+                            dto.setVerificationStatus(VerificationStatus.INVALID.ordinal());
                         }
                     } else {
-                        dto.setVerificationStatus(3);
+                        dto.setVerificationStatus(VerificationStatus.EXCEPTION.ordinal());
                     }
                     dto.setVerificationRunAt(new Date());
                     updatedList.add(dto);

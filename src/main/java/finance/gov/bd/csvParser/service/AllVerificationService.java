@@ -145,7 +145,7 @@ public class AllVerificationService {
         }
     }
 
-    @Scheduled(initialDelay = 5 * 1000, fixedDelay = 24 * 60 * 60 * 1000)
+    @Scheduled(initialDelay = 5 * 1000, fixedDelay = 1 * 60 * 60 * 1000)
     public void startVerify() {
         System.out.println("Start");
         verifyThreadsV1();
