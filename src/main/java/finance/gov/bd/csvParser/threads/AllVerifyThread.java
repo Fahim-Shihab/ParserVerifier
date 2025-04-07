@@ -139,6 +139,7 @@ public class AllVerifyThread extends Thread {
                             dto.setVerificationStatus(VerificationStatus.EXCEPTION.ordinal());
                         }
                         dto.setVerificationRunAt(new Date());
+                        srNeedVerifyRepo.save(dto);
                         updatedList.add(dto);
                     } else if (dto.getSmartId() != null) {
                         Data response = allVerificationService.getNidData(dto.getSmartId(), dto.getDateOfBirth().toString());
@@ -158,6 +159,7 @@ public class AllVerifyThread extends Thread {
                             dto.setVerificationStatus(VerificationStatus.EXCEPTION.ordinal());
                         }
                         dto.setVerificationRunAt(new Date());
+                        srNeedVerifyRepo.save(dto);
                         updatedList.add(dto);
                     }
                 } else if (dto.getBirthRegNo() != null && dto.getDateOfBirth() != null) {
@@ -174,11 +176,12 @@ public class AllVerifyThread extends Thread {
                         dto.setVerificationStatus(VerificationStatus.EXCEPTION.ordinal());
                     }
                     dto.setVerificationRunAt(new Date());
+                    srNeedVerifyRepo.save(dto);
                     updatedList.add(dto);
                 }
             }
 
-            srNeedVerifyRepo.saveAll(updatedList);
+//            srNeedVerifyRepo.saveAll(updatedList);
         }
     }
 }
