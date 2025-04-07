@@ -2,6 +2,7 @@ package finance.gov.bd.csvParser.model;
 
 import com.vladmihalcea.hibernate.type.json.JsonBinaryType;
 import finance.gov.bd.csvParser.common.Address;
+import io.hypersistence.utils.hibernate.type.json.JsonType;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -16,7 +17,8 @@ import java.util.Date;
 @Getter
 @Setter
 @NoArgsConstructor
-@TypeDef(name = "jsonb", typeClass = JsonBinaryType.class)
+//@TypeDef(name = "jsonb", typeClass = JsonBinaryType.class)
+@TypeDef(name = "json", typeClass = JsonType.class)
 public class NidInfo {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -53,12 +55,12 @@ public class NidInfo {
     @Column(name = "photo")
     private String photo;
 
-    @Type(type = "jsonb")
-    @Column(name = "present_address", columnDefinition = "jsonb")
+    @Type(type = "json")
+    @Column(name = "present_address", columnDefinition = "json")
     private Address presentAddress;
 
-    @Type(type = "jsonb")
-    @Column(name = "permanent_address", columnDefinition = "jsonb")
+    @Type(type = "json")
+    @Column(name = "permanent_address", columnDefinition = "json")
     private Address permanentAddress;
 
     @Column(name = "verified_at")

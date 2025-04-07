@@ -12,7 +12,7 @@ import java.util.List;
 public interface SrNeedVerifyRepo extends JpaRepository<SrNeedVerify, Integer> {
 
     @Query(value = "select * from sr_need_verify where 1=1 and verification_status in (0,3) " +
-            " offset :offset limit :size", nativeQuery = true)
+            " limit :size offset :offset", nativeQuery = true)
     List<SrNeedVerify> findByStatusAndOffset(
                                                                    @Param("size") Long size, @Param("offset") Long offset);
 
